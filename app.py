@@ -38,18 +38,6 @@ def save_data(aktivitas, kategori, durasi_detik):
         df = new_data
     df.to_csv("time_log.csv", index=False)
 
-# ... (bagian input dan logika stopwatch tetap sama) ...
-
-# --- RIWAYAT AKTIVITAS ---
-st.divider()
-st.write("### 📜 Riwayat Waktumu")
-try:
-    history_df = pd.read_csv("time_log.csv")
-    # Tampilkan tabel dengan urutan terbaru di atas
-    st.dataframe(history_df.iloc[::-1], use_container_width=True, hide_index=True) 
-except:
-    st.info("Belum ada data yang tersimpan. Mulai aktivitas pertamamu!")
-
 # --- BAGIAN INPUT ---
 col1, col2 = st.columns(2)
 with col1:
