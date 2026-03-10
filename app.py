@@ -13,19 +13,26 @@ TZ_SAMARINDA = pytz.timezone('Asia/Makassar')
 st.title("⏱️ My Time Tracker")
 
 # --- 2. FUNGSI PENDUKUNG ---
-def format_duration(seconds):
+def format_duration_simple(seconds):
     mins = int(seconds // 60)
-    secs = int(seconds % 60)
-    return f"{mins}m {secs}s"
+    # Menampilkan hanya menit saja
+    return f"{mins} menit"
 
-def save_data(aktivitas, kategori, durasi_detik):
-    now = datetime.now(TZ_SAMARINDA)
-    tanggal = now.strftime("%Y-%m-%d")
-    jam_selesai = now.strftime("%H:%M:%S")
-    durasi_teks = format_duration(durasi_detik)
+def save_data(aktivitas, kategori, start_timestamp, end_timestamp):
+    # Mengonversi timestamp ke waktu Samarinda
+    start_time = datetime.fromtimestamp(start_timestamp, TZ_SAMARINDA)
+    end_time = datetime.fromtimestamp(end_timestamp, TZ_SAMARINDA)
     
-    new_data = pd.DataFrame([[tanggal, jam_selesai, aktivitas, kategori, durasi_teks]], 
-                            columns=['Tanggal', 'Jam', 'Aktivitas', 'Kategori', 'Durasi'])
+    tanggal = start_time.strftime("%Y-%m-%d")
+    
+    # Format Jam: Menampilkan Jam Start - Jam Selesai (tanpa detik)
+    jam_range = f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
+    
+    durasi_detik = end_timestamp - start_timestamp
+    durasi_teks = format_duration_simple(durasi_detik)
+    
+    new_data = pd.DataFrame([[tanggal, jam_range, aktivitas, kategori, durasi_teks]], 
+                            columns=['Tanggal', 'Jam', 'Aktivitas', 'Klasifikasi', 'Durasi'])
     try:
         df = pd.read_csv("time_log.csv")
         df = pd.concat([df, new_data], ignore_index=True)
@@ -65,7 +72,7 @@ if col_b.button("⏹️ Berhenti & Simpan", use_container_width=True):
     else:
         st.warning("Klik 'Mulai' terlebih dahulu!")
 
-# --- 5. KONTROL DATA (Hanya Hapus & Download) ---
+# --- 5. KONTROL DATA ---
 st.divider()
 try:
     df_history = pd.read_csv("time_log.csv")
