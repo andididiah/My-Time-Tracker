@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import time
+import pytz
 from datetime import datetime
 
 # --- KONFIGURASI HALAMAN ---
@@ -9,12 +10,22 @@ st.set_page_config(page_title="My Time Tracker", page_icon="⏱️")
 st.title("⏱️ My Personal Time Tracker")
 st.subheader("Kelola waktumu dengan lebih bermakna")
 
-# --- DATABASE SEDERHANA (File CSV) ---
-# Ini akan menyimpan data kamu secara gratis di folder yang sama
-def save_data(aktivitas, kategori, durasi):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    new_data = pd.DataFrame([[now, aktivitas, kategori, durasi]], 
-                            columns=['Waktu', 'Aktivitas', 'Klasifikasi', 'Durasi (Detik)'])
+# --- FUNGSI FORMAT WAKTU ---
+def format_duration(seconds):
+    mins = int(seconds // 60)
+    secs = int(seconds % 60)
+    return f"{mins}m {secs}s"
+
+# --- DATABASE SEDERHANA ---
+def save_data(aktivitas, kategori, durasi_detik):
+    # Mengatur zona waktu ke Jakarta (WIB)
+    tz = pytz.timezone('Asia/Jakarta')
+    now = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    
+    durasi_teks = format_duration(durasi_detik)
+    
+    new_data = pd.DataFrame([[now, aktivitas, kategori, durasi_teks]], 
+                            columns=['Waktu', 'Aktivitas', 'Klasifikasi', 'Durasi'])
     try:
         df = pd.read_csv("time_log.csv")
         df = pd.concat([df, new_data], ignore_index=True)
@@ -47,13 +58,12 @@ if col_a.button("▶️ Mulai", use_container_width=True):
 if col_b.button("⏹️ Berhenti & Simpan", use_container_width=True):
     if st.session_state.start_time:
         end_time = time.time()
-        durasi_detik = round(end_time - st.session_state.start_time)
-        durasi_menit = round(durasi_detik / 60, 2)
+        durasi_detik = end_time - st.session_state.start_time
         
         # Simpan ke file
         save_data(nama_tugas, kategori, durasi_detik)
         
-        st.success(f"Berhasil dicatat! Durasi: {durasi_menit} menit.")
+        st.success(f"Berhasil dicatat! Durasi: {format_duration(durasi_detik)}")
         st.session_state.start_time = None
     else:
         st.warning("Klik 'Mulai' terlebih dahulu!")
@@ -63,6 +73,7 @@ st.divider()
 st.write("### 📜 Riwayat Waktumu")
 try:
     history_df = pd.read_csv("time_log.csv")
-    st.dataframe(history_df.tail(10), use_container_width=True) # Tampilkan 10 data terakhir
+    # Menampilkan data terbaru di paling atas
+    st.dataframe(history_df.iloc[::-1], use_container_width=True) 
 except:
     st.info("Belum ada data yang tersimpan. Mulai aktivitas pertamamu!")
