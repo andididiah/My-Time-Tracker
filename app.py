@@ -19,13 +19,18 @@ def format_duration(seconds):
 # --- DATABASE SEDERHANA ---
 def save_data(aktivitas, kategori, durasi_detik):
     # Mengatur zona waktu ke Jakarta (WIB)
-    tz = pytz.timezone('Asia/Jakarta')
-    now = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    tz = pytz.timezone('Asia/Makassar')
+    now = datetime.now(tz)
+    
+    # Memisahkan Tanggal dan Waktu
+    tanggal = now.strftime("%Y-%m-%d")
+    jam = now.strftime("%H:%M:%S")
     
     durasi_teks = format_duration(durasi_detik)
     
-    new_data = pd.DataFrame([[now, aktivitas, kategori, durasi_teks]], 
-                            columns=['Waktu', 'Aktivitas', 'Klasifikasi', 'Durasi'])
+    # Menambahkan kolom Tanggal dan Jam secara terpisah
+    new_data = pd.DataFrame([[tanggal, jam, aktivitas, kategori, durasi_teks]], 
+                            columns=['Tanggal', 'Jam', 'Aktivitas', 'Kategori', 'Durasi'])
     try:
         df = pd.read_csv("time_log.csv")
         df = pd.concat([df, new_data], ignore_index=True)
@@ -33,13 +38,25 @@ def save_data(aktivitas, kategori, durasi_detik):
         df = new_data
     df.to_csv("time_log.csv", index=False)
 
+# ... (bagian input dan logika stopwatch tetap sama) ...
+
+# --- RIWAYAT AKTIVITAS ---
+st.divider()
+st.write("### 📜 Riwayat Waktumu")
+try:
+    history_df = pd.read_csv("time_log.csv")
+    # Tampilkan tabel dengan urutan terbaru di atas
+    st.dataframe(history_df.iloc[::-1], use_container_width=True, hide_index=True) 
+except:
+    st.info("Belum ada data yang tersimpan. Mulai aktivitas pertamamu!")
+
 # --- BAGIAN INPUT ---
 col1, col2 = st.columns(2)
 with col1:
     nama_tugas = st.text_input("Apa yang sedang kamu kerjakan?", placeholder="Contoh: Belajar Excel")
 with col2:
-    kategori = st.selectbox("Klasifikasi Aktivitas:", [
-        "Personal Care 🌸"
+    kategori = st.selectbox("Kategori:", [
+        "Personal Care 🌸",
         "Spiritual ✨", 
         "Health 💪", 
         "Development 💡"
