@@ -6,11 +6,10 @@ from datetime import datetime
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Time Tracker Samarinda", page_icon="⏱️")
-
-# Setting Zona Waktu Samarinda (WITA)
 TZ_SAMARINDA = pytz.timezone('Asia/Makassar')
 
 st.title("⏱️ My Time Tracker")
+st.write(f"Zona Waktu: **Samarinda (WITA)**")
 
 # --- 2. FUNGSI PENDUKUNG ---
 def format_duration_simple(seconds):
@@ -41,15 +40,14 @@ def save_data(aktivitas, kategori, start_timestamp, end_timestamp):
     df.to_csv("time_log.csv", index=False)
 
 # --- 3. INPUT AKTIVITAS ---
-with st.container():
-    nama_tugas = st.text_input("Apa yang mau dikerjakan?", placeholder="Contoh: Belajar Akuntansi")
-    kategori = st.selectbox("Kategori:", [
+nama_tugas = st.text_input("Apa yang sedang dikerjakan?", placeholder="Contoh: Belajar Akuntansi")
+kategori = st.selectbox("Klasifikasi Aktivitas:", [
         "Personal Care 🌸",
         "Spiritual ✨", 
         "Health 💪", 
         "Development 💡",
         "Work 💼"
-    ])
+])
 
 # --- 4. LOGIKA STOPWATCH ---
 if 'start_time' not in st.session_state:
@@ -59,13 +57,14 @@ col_a, col_b = st.columns(2)
 
 if col_a.button("▶️ Mulai Sesi", use_container_width=True):
     st.session_state.start_time = time.time()
-    st.info("Stopwatch berjalan... Segera klik 'Berhenti' jika selesai.")
+    st.info("Stopwatch berjalan...")
 
 if col_b.button("⏹️ Berhenti & Simpan", use_container_width=True):
     if st.session_state.start_time:
-        durasi_akhir = time.time() - st.session_state.start_time
-        save_data(nama_tugas, kategori, durasi_akhir)
-        st.success(f"Tersimpan! Durasi: {format_duration(durasi_akhir)}")
+        end_time_val = time.time()
+        save_data(nama_tugas, kategori, st.session_state.start_time, end_time_val)
+        
+        st.success("Tersimpan!")
         st.session_state.start_time = None
         time.sleep(1)
         st.rerun()
@@ -90,7 +89,8 @@ try:
 
     # --- 6. TABEL RIWAYAT ---
     st.write("### 📜 Riwayat Lengkap")
+    # Menampilkan tabel dengan kolom yang sudah diperbarui
     st.dataframe(df_history.iloc[::-1], use_container_width=True, hide_index=True)
 
 except FileNotFoundError:
-    st.info("Belum ada data tersimpan. Mulai aktivitas pertamamu!")
+    st.info("Belum ada data tersimpan.")
