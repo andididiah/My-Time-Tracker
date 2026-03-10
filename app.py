@@ -28,10 +28,10 @@ with col1:
     nama_tugas = st.text_input("Apa yang sedang kamu kerjakan?", placeholder="Contoh: Belajar Excel")
 with col2:
     kategori = st.selectbox("Klasifikasi Aktivitas:", [
-        "Penting & Spesial ✨", 
-        "Mindful 🧘", 
-        "Neutral 😐", 
-        "Worst Time Waste Ever 🗑️"
+        "Personal Care 🌸"
+        "Spiritual ✨", 
+        "Health 💪", 
+        "Development 💡"
     ])
 
 # --- LOGIKA STOPWATCH ---
