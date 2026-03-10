@@ -14,17 +14,13 @@ st.write(f"Zona Waktu: **Samarinda (WITA)**")
 # --- 2. FUNGSI PENDUKUNG ---
 def format_duration_simple(seconds):
     mins = int(seconds // 60)
-    # Menampilkan hanya menit saja
     return f"{mins} menit"
 
 def save_data(aktivitas, kategori, start_timestamp, end_timestamp):
-    # Mengonversi timestamp ke waktu Samarinda
     start_time = datetime.fromtimestamp(start_timestamp, TZ_SAMARINDA)
     end_time = datetime.fromtimestamp(end_timestamp, TZ_SAMARINDA)
     
     tanggal = start_time.strftime("%Y-%m-%d")
-    
-    # Format Jam: Menampilkan Jam Start - Jam Selesai (tanpa detik)
     jam_range = f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
     
     durasi_detik = end_timestamp - start_timestamp
@@ -39,37 +35,65 @@ def save_data(aktivitas, kategori, start_timestamp, end_timestamp):
         df = new_data
     df.to_csv("time_log.csv", index=False)
 
-# --- 3. INPUT AKTIVITAS ---
+# --- 3. INPUT AKTIVITAS & TARGET ---
 nama_tugas = st.text_input("Apa yang sedang dikerjakan?", placeholder="Contoh: Belajar Akuntansi")
-kategori = st.selectbox("Klasifikasi Aktivitas:", [
-        "Personal Care 🌸",
-        "Spiritual ✨", 
-        "Health 💪", 
-        "Development 💡",
-        "Work 💼"
-])
 
-# --- 4. LOGIKA STOPWATCH ---
+col_kat, col_target = st.columns(2)
+with col_kat:
+    kategori = st.selectbox("Klasifikasi:", [
+        "Penting & Spesial ✨", 
+        "Mindful 🧘", 
+        "Neutral 😐", 
+        "Worst Time Waste Ever 🗑️"
+    ])
+with col_target:
+    target_menit = st.number_input("Target Waktu (Menit):", min_value=1, value=25)
+
+# --- 4. LOGIKA TIMER & STOPWATCH ---
 if 'start_time' not in st.session_state:
     st.session_state.start_time = None
 
-col_a, col_b = st.columns(2)
+col_a, col_b, col_c = st.columns(3)
 
-if col_a.button("▶️ Mulai Sesi", use_container_width=True):
-    st.session_state.start_time = time.time()
-    st.info("Stopwatch berjalan...")
-
-if col_b.button("⏹️ Berhenti & Simpan", use_container_width=True):
-    if st.session_state.start_time:
-        end_time_val = time.time()
-        save_data(nama_tugas, kategori, st.session_state.start_time, end_time_val)
-        
-        st.success("Tersimpan!")
-        st.session_state.start_time = None
-        time.sleep(1)
+with col_a:
+    if st.button("▶️ Mulai Sesi", use_container_width=True):
+        st.session_state.start_time = time.time()
         st.rerun()
+
+with col_b:
+    if st.button("⏹️ Berhenti", use_container_width=True):
+        if st.session_state.start_time:
+            end_time_val = time.time()
+            save_data(nama_tugas, kategori, st.session_state.start_time, end_time_val)
+            st.success("Tersimpan!")
+            st.session_state.start_time = None
+            time.sleep(1)
+            st.rerun()
+        else:
+            st.warning("Mulai dulu!")
+
+with col_c:
+    if st.button("⚡ Instan (1m)", use_container_width=True):
+        now_ts = time.time()
+        save_data(nama_tugas, kategori, now_ts, now_ts + 60)
+        st.success("Tercatat!")
+        st.rerun()
+
+# --- TAMPILAN STATUS TIMER ---
+if st.session_state.start_time:
+    current_elapsed = time.time() - st.session_state.start_time
+    target_detik = target_menit * 60
+    
+    if current_elapsed < target_detik:
+        sisa_waktu = target_detik - current_elapsed
+        st.info(f"⏳ Sisa waktu target: {int(sisa_waktu // 60)}m {int(sisa_waktu % 60)}s")
     else:
-        st.warning("Klik 'Mulai' terlebih dahulu!")
+        overtime = current_elapsed - target_detik
+        st.error(f"⚠️ Melebihi target (Overtime): {int(overtime // 60)}m {int(overtime % 60)}s")
+    
+    # Tombol Refresh Manual untuk HP (Hemat Baterai)
+    if st.button("🔄 Update Waktu"):
+        st.rerun()
 
 # --- 5. KONTROL DATA ---
 st.divider()
@@ -87,10 +111,8 @@ try:
         csv_data = df_history.to_csv(index=False).encode('utf-8')
         st.download_button("📥 Download CSV", data=csv_data, file_name="my_time_log.csv", use_container_width=True)
 
-    # --- 6. TABEL RIWAYAT ---
     st.write("### 📜 Riwayat Lengkap")
-    # Menampilkan tabel dengan kolom yang sudah diperbarui
     st.dataframe(df_history.iloc[::-1], use_container_width=True, hide_index=True)
 
 except FileNotFoundError:
-    st.info("Belum ada data tersimpan.")
+    st.info("Belum ada data.")
