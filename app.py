@@ -4,32 +4,28 @@ import time
 import pytz
 from datetime import datetime
 
-# --- KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="My Time Tracker", page_icon="⏱️")
+# --- 1. KONFIGURASI HALAMAN ---
+st.set_page_config(page_title="Time Tracker Samarinda", page_icon="⏱️")
 
-st.title("⏱️ My Personal Time Tracker")
-st.subheader("Kelola waktumu dengan lebih bermakna")
+# Setting Zona Waktu Samarinda (WITA)
+TZ_SAMARINDA = pytz.timezone('Asia/Makassar')
 
-# --- FUNGSI FORMAT WAKTU ---
+st.title("⏱️ My Time Tracker")
+st.write(f"Zona Waktu: **Samarinda (WITA)**")
+
+# --- 2. FUNGSI PENDUKUNG ---
 def format_duration(seconds):
     mins = int(seconds // 60)
     secs = int(seconds % 60)
     return f"{mins}m {secs}s"
 
-# --- DATABASE SEDERHANA ---
 def save_data(aktivitas, kategori, durasi_detik):
-    # Mengatur zona waktu ke Jakarta (WIB)
-    tz = pytz.timezone('Asia/Makassar')
-    now = datetime.now(tz)
-    
-    # Memisahkan Tanggal dan Waktu
+    now = datetime.now(TZ_SAMARINDA)
     tanggal = now.strftime("%Y-%m-%d")
-    jam = now.strftime("%H:%M:%S")
-    
+    jam_selesai = now.strftime("%H:%M:%S")
     durasi_teks = format_duration(durasi_detik)
     
-    # Menambahkan kolom Tanggal dan Jam secara terpisah
-    new_data = pd.DataFrame([[tanggal, jam, aktivitas, kategori, durasi_teks]], 
+    new_data = pd.DataFrame([[tanggal, jam_selesai, aktivitas, kategori, durasi_teks]], 
                             columns=['Tanggal', 'Jam', 'Aktivitas', 'Kategori', 'Durasi'])
     try:
         df = pd.read_csv("time_log.csv")
@@ -38,47 +34,71 @@ def save_data(aktivitas, kategori, durasi_detik):
         df = new_data
     df.to_csv("time_log.csv", index=False)
 
-# --- BAGIAN INPUT ---
-col1, col2 = st.columns(2)
-with col1:
-    nama_tugas = st.text_input("Apa yang sedang kamu kerjakan?", placeholder="Contoh: Belajar Excel")
-with col2:
+# --- 3. INPUT AKTIVITAS ---
+with st.container():
+    nama_tugas = st.text_input("Apa yang sedang dikerjakan?", placeholder="Contoh: Belajar Akuntansi")
     kategori = st.selectbox("Kategori:", [
         "Personal Care 🌸",
         "Spiritual ✨", 
         "Health 💪", 
-        "Development 💡"
+        "Development 💡",
+        "Work 💼"
     ])
 
-# --- LOGIKA STOPWATCH ---
+# --- 4. LOGIKA STOPWATCH ---
 if 'start_time' not in st.session_state:
     st.session_state.start_time = None
 
 col_a, col_b = st.columns(2)
 
-if col_a.button("▶️ Mulai", use_container_width=True):
+if col_a.button("▶️ Mulai Sesi", use_container_width=True):
     st.session_state.start_time = time.time()
-    st.info(f"Stopwatch dimulai untuk: {nama_tugas}")
+    st.info("Stopwatch berjalan... Segera klik 'Berhenti' jika selesai.")
 
 if col_b.button("⏹️ Berhenti & Simpan", use_container_width=True):
     if st.session_state.start_time:
-        end_time = time.time()
-        durasi_detik = end_time - st.session_state.start_time
-        
-        # Simpan ke file
-        save_data(nama_tugas, kategori, durasi_detik)
-        
-        st.success(f"Berhasil dicatat! Durasi: {format_duration(durasi_detik)}")
+        durasi_akhir = time.time() - st.session_state.start_time
+        save_data(nama_tugas, kategori, durasi_akhir)
+        st.success(f"Tersimpan! Durasi: {format_duration(durasi_akhir)}")
         st.session_state.start_time = None
+        time.sleep(1)
+        st.rerun()
     else:
         st.warning("Klik 'Mulai' terlebih dahulu!")
 
-# --- RIWAYAT AKTIVITAS ---
+# --- 5. RINGKASAN HARIAN & KONTROL DATA ---
 st.divider()
-st.write("### 📜 Riwayat Waktumu")
 try:
-    history_df = pd.read_csv("time_log.csv")
-    # Menampilkan data terbaru di paling atas
-    st.dataframe(history_df.iloc[::-1], use_container_width=True) 
-except:
-    st.info("Belum ada data yang tersimpan. Mulai aktivitas pertamamu!")
+    df_history = pd.read_csv("time_log.csv")
+    hari_ini = datetime.now(TZ_SAMARINDA).strftime("%Y-%m-%d")
+    data_hari_ini = df_history[df_history['Tanggal'] == hari_ini]
+    
+    if not data_hari_ini.empty:
+        st.write(f"### 📊 Ringkasan Hari Ini ({hari_ini})")
+        ringkasan = data_hari_ini['Klasifikasi'].value_counts()
+        
+        # Tampilan angka ringkasan
+        m1, m2, m3 = st.columns(3)
+        metrics = list(ringkasan.items())
+        if len(metrics) > 0: m1.metric(metrics[0][0], f"{metrics[0][1]} Sesi")
+        if len(metrics) > 1: m2.metric(metrics[1][0], f"{metrics[1][1]} Sesi")
+        if len(metrics) > 2: m3.metric(metrics[2][0], f"{metrics[2][1]} Sesi")
+
+    # Tombol Hapus & Download
+    st.write("---")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("🗑️ Hapus Baris Terakhir", use_container_width=True):
+            df_history = df_history[:-1]
+            df_history.to_csv("time_log.csv", index=False)
+            st.rerun()
+    with c2:
+        csv_data = df_history.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Download CSV", data=csv_data, file_name="my_time_log.csv", use_container_width=True)
+
+    # --- 6. TABEL RIWAYAT ---
+    st.write("### 📜 Riwayat Lengkap")
+    st.dataframe(df_history.iloc[::-1], use_container_width=True, hide_index=True)
+
+except FileNotFoundError:
+    st.info("Belum ada data tersimpan. Mulai aktivitas pertamamu!")
